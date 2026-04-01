@@ -1754,7 +1754,9 @@ function RemoveXSS($val) {
 
 function getDataCount($countType){
 	global $dsql;
-	$whereStr=" where DATE_FORMAT(FROM_UNIXTIME(v_addtime),'%Y-%m-%d') = DATE_FORMAT(NOW(),'%Y-%m-%d')";
+	$todayStart = strtotime("today");
+	$todayEnd = $todayStart + 86400;
+	$whereStr=" where v_addtime >= $todayStart and v_addtime < $todayEnd";
 	switch ($countType) {
 		case "all":
 		$row = $dsql->GetOne("select count(*) as dd From `sea_data`");
@@ -1770,7 +1772,9 @@ function getDataCount($countType){
 
 function getNewsDataCount($countType){
 	global $dsql;
-	$whereStr=" where DATE_FORMAT(FROM_UNIXTIME(n_addtime),'%Y-%m-%d') = DATE_FORMAT(NOW(),'%Y-%m-%d')";
+	$todayStart = strtotime("today");
+	$todayEnd = $todayStart + 86400;
+	$whereStr=" where n_addtime >= $todayStart and n_addtime < $todayEnd";
 	switch ($countType) {
 		case "all":
 		$row = $dsql->GetOne("select count(*) as dd From `sea_news`");
