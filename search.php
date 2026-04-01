@@ -89,6 +89,8 @@ $schwhere = ltrim($schwhere,'&');
 $page = (isset($page) && is_numeric($page)) ? $page : 1;
 if($searchtype != 5){$searchtype=$cfg_search_type;}
 $tid = (isset($tid) && is_numeric($tid)) ? $tid : 0;
+$uptypeid=GetTopid($tid);
+if($uptypeid== 0){$uptypeid=$tid;}
 if(!isset($searchword)) $searchword = '';
 $action = $_REQUEST['action'];
 $searchword = RemoveXSS(stripslashes($searchword));
@@ -140,7 +142,7 @@ echoSearchPage();
 
 function echoSearchPage()
 {
-	global $dsql,$cfg_iscache,$mainClassObj,$page,$t1,$cfg_search_time,$searchtype,$searchword,$tid,$year,$letter,$area,$yuyan,$state,$ver,$order,$jq,$money,$cfg_basehost,$cfg_issearchlog;
+	global $dsql,$cfg_iscache,$mainClassObj,$page,$t1,$cfg_search_time,$searchtype,$searchword,$tid,$uptypeid,$year,$letter,$area,$yuyan,$state,$ver,$order,$jq,$money,$cfg_basehost,$cfg_issearchlog;
 	
 	$orderarr=array('id','idasc','time','timeasc','hit','hitasc','commend','commendasc','score','scoreasc','dayhit','weekhit','monthhit','random','douban','mtime','imdb','dayhitasc','weekhitasc','monthhitasc','mtimeasc','imdbasc');
     if(!(in_array($order,$orderarr))){$order='time';}
@@ -294,6 +296,7 @@ if(check_str($page,$key)){ShowMsg('请勿输入危险字符！','index.php','0',
 		$ver = !empty($ver)?$ver:'全部';
 		$money = !empty($money)?$money:'全部';
 		$content = str_replace("{searchpage:type}",$tid,$content);
+		$content = str_replace("{searchpage:uptype}",$uptypeid,$content);
 		$content = str_replace("{searchpage:typename}",$tname ,$content);
 		$content = str_replace("{searchpage:year}",$year,$content);
 		$content = str_replace("{searchpage:area}",$area,$content);
