@@ -8,12 +8,12 @@
 				</a>					
 			</div>
 			<ul class="myui-header__menu nav-menu hidden-sm hidden-xs">
-				<li class=" {if:{seacms:currenttypeid}=-444}active{end if}"><a href="{seacms:indexlink}">首页</a></li>
+				<li id="index"><a href="{seacms:indexlink}">首页</a></li>
 				{seacms:menulist type=top}
-				<li class="{if:[menulist:typeid]={seacms:currenttypeid}}active{elseif:[menulist:typeid]={playpage:upid}}active{end if}"><a href="[menulist:link]">[menulist:typename]</a></li>
+				<li class="{if:[menulist:typeid]={seacms:currenttypeid}}active{elseif:[menulist:typeid]={playpage:upid}}active{elseif:[menulist:typeid]={searchpage:uptype}}active{end if}"><a href="[menulist:link]">[menulist:typename]</a></li>
 				{/seacms:menulist}
-				<li><a href="{seacms:topiclink}">专题</a></li>
-				<li><a href="{seacms:newslink}">资讯</a></li>
+				<li id="zt"><a href="{seacms:topiclink}">专题</a></li>
+				<li id="zx"><a href="{seacms:newslink}">资讯</a></li>
 			</ul>
 			<ul class="myui-header__user" style="margin-right:6px;">	
 				<li class="dropdown-hover">
