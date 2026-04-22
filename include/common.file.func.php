@@ -1,4 +1,4 @@
-<?php 
+<?php  
 //包含函数库
 require_once(sea_INC.'/inc/mysql.php' );
 //拼音的缓冲数组
