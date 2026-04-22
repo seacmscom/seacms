@@ -206,7 +206,7 @@ $aid=$row->id;
 <tr>
 <td width="80%" align="left" height="30" class="td_border">
 资源库地址：<input name="zapi" style="width:400px;">
- * 资源库api地址，仅支持 XML 格式，如：http://www.123.com/api.php
+ * 资源库api地址，同时支持XML和Json格式
 </td>
 </tr>
 

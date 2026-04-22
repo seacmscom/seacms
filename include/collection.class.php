@@ -12,9 +12,9 @@ class Collect
 	 * $video xml单个simplexml数据 
 	 * $localId 入库后本地id
 	 * */
+
 public function xml_db($video,$localId)
-	{  
-	
+	{ 
 global $rid,$rid1, $dsql;
 
     // 检查$rid和$dsql是否有效
@@ -140,7 +140,12 @@ foreach ($replace_Config as $replace_Name) {
 					$z["$k"]=$player['flag'];
 					}
 		for($i=0;$i<$zzt;$i++)
-		{
+		{ 
+
+		$video->dl->dd[$i]=trim($video->dl->dd[$i]); //去除空格
+		$video->dl->dd[$i]=trim($video->dl->dd[$i], "#"); //去除#
+
+
 		   if($video->dl->dd[$i]['flag']=='down')
 		      {$v_data['v_downdata'] .= "下载地址一$$".$video->dl->dd[$i]."$$$";} 
 		   else	
@@ -148,18 +153,6 @@ foreach ($replace_Config as $replace_Name) {
 				  $f=$video->dl->dd[$i]['flag'];
 				  $flag=$z["$f"];
 				  
-				  /*  自动修复影片数据   by nohacks.cn */
-					$dd=$video->dl->dd[$i];
-					$vod=explode("#",(string)$dd);
-					$vlist=explode("$",$vod[0]);
-					if(sizeof($vlist)<3) {
-					//补充完整
-					$nohacks=1;
-					 foreach($vod as &$mov) { if(sizeof($vlist)==1){$mov="正片_".$nohacks."$".$mov."$".$f;$nohacks++;}else{$mov=$mov."$".$f;} }
-					 //重新组合
-					$video->dl->dd[$i] = implode("#",$vod);
-					}
-				/* 自动修复影片数据    代码结束    */
 				
 					//如果检测到播放地址没有后缀
 					$find='$'.$f;$find=(String)$find;
@@ -918,5 +911,242 @@ foreach ($replace_Config as $replace_Name) {
 		}
 		return $string;
 	}
+
+	public function json_db($video,$localId)
+	{ 
+global $rid,$rid1, $dsql;
+
+    // 检查$rid和$dsql是否有效
+	if (empty($rid)){$rid=$rid1;}
+    if (empty($rid) || !is_object($dsql)) {
+        return "配置读取失败：参数错误";
+    }
+
+    // 读取配置
+    $configSql = "SELECT filter_config, replace_config FROM sea_zyk WHERE zid = " . intval($rid);
+    $configRow = $dsql->GetOne($configSql);
+    
+$filterConfig = array();
+$replaceConfig = array();
+if (!empty($configRow) && is_array($configRow)) {
+    // 处理filter_config
+    if (isset($configRow['filter_config']) && $configRow['filter_config'] !== '') {
+        $filterConfig = json_decode($configRow['filter_config'], true);
+        if (!is_array($filterConfig)) {
+            $filterConfig = array();
+        }
+    }
+    
+    // 处理replace_config
+    if (isset($configRow['replace_config']) && $configRow['replace_config'] !== '') {
+        $replaceConfig = json_decode($configRow['replace_config'], true);
+        if (!is_array($replaceConfig)) {
+            $replaceConfig = array();
+        }
+    }
+}
+
+// 过滤影片名称,地区,语言
+$filter_config = ['name' => '影片名称','area' => '影片地区','lang' => '影片语言'];
+
+foreach ($filter_config as $filter_name => $label) {
+    if (!empty($filterConfig[$filter_name]) && is_array($filterConfig[$filter_name])) {
+        foreach ($filterConfig[$filter_name] as $keyword) {
+            if (strpos($video['vod_name'], $keyword) !== false) {
+                return "{$label} 包含过滤词【<font color=red>{$keyword}</font>】在禁止采集列表中,跳过采集<br>";
+            }
+        }
+    }
+}
+
+// 年份过滤
+if (!empty($filterConfig['year']) && is_array($filterConfig['year'])) {
+    $videoYear = isset($video['vod_year']) ? $video['vod_year'] : ''; // 确保年份是整数
+    if (in_array($videoYear, $filterConfig['year']) AND $videoYear !=0 AND $videoYear !="") {
+        return "年份【<font color=red>{$videoYear}</font>】在禁止采集列表中,跳过采集<br>";
+    }
+}
+
+// 替换影片名称,地区,语言,演员
+$replace_Config = ['name', 'area', 'lang', 'actor'];
+foreach ($replace_Config as $replace_Name) {
+    if (!empty($replaceConfig[$replace_Name]) && is_array($replaceConfig[$replace_Name])) {
+        foreach ($replaceConfig[$replace_Name] as $old => $new) {
+            $video['vod_name'] = str_replace($old, $new, $video['vod_name']);
+        }
+    }
+}
+
+
 	
+		$v_data['v_name'] =  htmlspecialchars($video['vod_name']);//影片名称
+		$v_data['v_pic'] = isset($video['vod_pic']) ? $video['vod_pic'] : '';//影片图片地址
+		$v_data['v_state'] = isset($video['vod_remarks']) ? $video['vod_remarks'] : '';//影片连载状态
+		$v_data['v_lang'] = isset($video['vod_lang']) ? $video['vod_lang'] : '';//影片语言
+		$v_data['v_publisharea'] = isset($video['vod_area']) ? $video['vod_area'] : '';//影片地区
+		$v_data['v_publishyear'] = isset($video['vod_year']) ? $video['vod_year'] : '';//影片年份
+		$v_data['v_note'] = isset($video['vod_remarks']) ? $video['vod_remarks'] : '';//影片备注
+		$v_data['v_tags'] = htmlspecialchars(isset($video['vod_keywords']) ? $video['vod_keywords'] : '');//影片关键词
+		$v_data['v_nickname'] = htmlspecialchars(isset($video['vod_en']) ? $video['vod_en'] : '');//影片别名
+		$v_data['v_reweek'] = isset($video['vod_reweek']) ? $video['vod_reweek'] : '';//影片更新周期
+		$v_data['v_douban'] = isset($video['vod_douban']) ? $video['vod_douban'] : '';//影片豆瓣评分
+		$v_data['v_mtime'] = isset($video['vod_mtime']) ? $video['vod_mtime'] : '';//影片时光网评分
+		$v_data['v_imdb'] = isset($video['vod_imdb']) ? $video['vod_imdb'] : '';//影片imdb评分
+		$v_data['v_tvs'] = isset($video['vod_tvs']) ? $video['vod_tvs'] : '';//影片上映电视台
+		$v_data['v_company'] = isset($video['vod_company']) ? $video['vod_company'] : '';//影片发行公司
+		$v_data['v_ver'] = isset($video['vod_ver']) ? $video['vod_ver'] : '';//影片版本
+		$v_data['v_longtxt'] = isset($video['vod_longtxt']) ? $video['vod_longtxt'] : '';//影片备用备注信息
+		$v_data['v_actor'] = htmlspecialchars(isset($video['vod_actor']) ? $video['vod_actor'] : '');//影片演员
+		$v_data['v_actor'] = str_replace('%', ' ', $v_data['v_actor']);
+		$v_data['v_director'] = htmlspecialchars(isset($video['vod_director']) ? $video['vod_director'] : '');//影片导演
+		$v_data['v_director']  = str_replace('%', ' ', $v_data['v_director']);
+		$v_data['v_des'] = htmlspecialchars(isset($video['vod_content']) ? $video['vod_content'] : '');//影片简介
+		$v_data['v_total'] = isset($video['vod_total']) ? $video['vod_total'] : '';//总集数
+		$v_data['v_len'] = isset($video['vod_len']) ? $video['vod_len'] : '';//影片时长
+		$v_data['v_jq'] = isset($video['vod_jq']) ? $video['vod_jq'] : '';//剧情分类
+		if($v_data['v_jq']=="" OR empty($v_data['v_jq'])){$v_data['v_jq'] = isset($video['vod_class']) ? $video['vod_class'] : '';} //兼容其它cms剧情分类
+		if($v_data['v_actor']=="" OR empty($v_data['v_actor'])){$v_data['v_actor']="内详";}
+		if($v_data['v_director']=="" OR empty($v_data['v_director'])){$v_data['v_director']="内详";}
+		
+		//是否入库资源库时间或者系统now时间
+		global $cfg_gatherset;
+		$v_data['v_addtime'] = time();
+		if(strpos($cfg_gatherset,'Y')!==false && isset($video['vod_time'])){
+			$v_data['v_addtime'] = strtotime($video['vod_time']);
+		}
+		
+		// 处理播放数据
+		$playerKindsfile = sea_ROOT.'/data/admin/playerKinds.xml';
+		$xml = simplexml_load_file($playerKindsfile);
+		if(!$xml){$xml = simplexml_load_string(file_get_contents($playerKindsfile));}
+		$id = 0;
+		$z = array();
+		foreach($xml as $player){
+			$k = $player['postfix'];
+			$z["$k"] = $player['flag'];
+		}
+		
+		// 处理播放链接
+		$v_data['v_playdata'] = '';
+		$v_data['v_downdata'] = '';
+		
+		// 尝试从 JSON 中获取播放数据
+		if (isset($video['vod_play_from']) && isset($video['vod_play_url'])) {
+			$play_from = $video['vod_play_from'];
+			$play_url = $video['vod_play_url'];
+			
+			// 获取播放来源的标识
+			$flag = $play_from;
+			if (isset($z[$flag])) {
+				$flag = $z[$flag];
+			}
+			
+			// 处理播放地址，确保格式正确
+			// 格式应该是 "来源$$集1$url$后缀#集2$url$后缀#集3$url$后缀"
+			$play_url = trim($play_url, '#');
+			
+			// 在每一集后面加上后缀
+			$find = '$' . $play_from;
+			// 首先将 # 替换为 $后缀#
+			$play_url = str_replace('#', $find . '#', $play_url);
+			// 最后在末尾也加上 $后缀
+			$play_url .= $find;
+			// 防止重复添加
+			$play_url = str_replace($find . $find, $find, $play_url);
+			
+			// 将所有播放地址放在同一个播放来源下面
+			$v_data['v_playdata'] .= $flag . "$$" . $play_url . "$$$";
+		}
+		
+		// 处理下载地址
+		if (isset($video['vod_down_from']) && isset($video['vod_down_url'])) {
+			$down_from = $video['vod_down_from'];
+			$down_url = $video['vod_down_url'];
+			if (!empty($down_url)) {
+				$down_url = trim($down_url, '#');
+				$v_data['v_downdata'] .= $down_from . "$$" . $down_url . "$$$";
+			}
+		}
+		
+		// 去除末尾的 $$$
+		if (!empty($v_data['v_playdata'])) {
+			$v_data['v_playdata'] = substr($v_data['v_playdata'], 0, -3);
+		}
+		if (!empty($v_data['v_downdata'])) {
+			$v_data['v_downdata'] = substr($v_data['v_downdata'], 0, -3);
+		}
+		
+		$v_data['v_enname'] = Pinyin($v_data['v_name']);
+		$v_data['v_letter'] = strtoupper(substr($v_data['v_enname'], 0, 1));
+		
+		
+		// 影片关键词过滤 跳过采集
+		global $cfg_cjjump;
+		if($cfg_cjjump !=""){
+			$jumparr = explode('|',$cfg_cjjump);
+			foreach ($jumparr as $value)
+					  {
+						  if(strpos($v_data['v_name'],$value) !== false){return "数据<font color=red>".$v_data['v_name']."</font>含过滤词,跳过采集<br>";}
+					  }
+		}
+		
+		// 影片年份过滤 跳过采集
+		global $cfg_cjjumpNF;
+		if ($cfg_cjjumpNF != "") {
+			if (strpos($cfg_cjjumpNF, $v_data['v_publishyear']) === false || $v_data['v_publishyear'] == "" || $v_data['v_publishyear'] == "0") {
+				return "数据<font color=red>".$v_data['v_name']."</font>年份".$v_data['v_publishyear']."不在采集范围,跳过采集<br>";
+			}
+		}
+		
+		// 影片地区过滤 跳过采集
+		global $cfg_cjjumpDQ;
+		if($cfg_cjjumpDQ !=""){
+			if(strpos($cfg_cjjumpDQ,$v_data['v_publisharea']) === false OR $v_data['v_publisharea']=="" OR $v_data['v_publisharea']=="0"){return "数据<font color=red>".$v_data['v_name']."</font>地区".$v_data['v_publisharea']."不在采集范围,跳过采集<br>";}
+		}
+		
+		// 影片语言过滤 跳过采集
+		global $cfg_cjjumpYY;
+		if($cfg_cjjumpYY !=""){
+			if(strpos($cfg_cjjumpYY,$v_data['v_lang']) === false OR $v_data['v_lang']=="" OR $v_data['v_lang']=="0"){return "数据<font color=red>".$v_data['v_name']."</font>语言".$v_data['v_lang']."不在采集范围,跳过采集<br>";}
+		}
+		
+		// 影片名称替换
+		global $cfg_cjreplace;
+		if($cfg_cjreplace !=""){		
+			$r0 = explode('|',$cfg_cjreplace);
+			$r = array();
+			foreach($r0 as $data){$r[]=explode('=',$data);}
+			foreach($r as $d){$v_data['v_name']=str_replace($d['0'],$d['1'],$v_data['v_name']);}
+		}
+		
+		// 影片地区替换
+		global $cfg_cjreplaceDQ;
+		if($cfg_cjreplaceDQ !=""){		
+			$r0 = explode('|',$cfg_cjreplaceDQ);
+			$r = array();
+			foreach($r0 as $data){$r[]=explode('=',$data);}
+			foreach($r as $d){$v_data['v_publisharea']=str_replace($d['0'],$d['1'],$v_data['v_publisharea']);}
+		}
+		
+		// 影片语言替换
+		global $cfg_cjreplaceYY;
+		if($cfg_cjreplaceYY !=""){		
+			$r0 = explode('|',$cfg_cjreplaceYY);
+			$r = array();
+			foreach($r0 as $data){$r[]=explode('=',$data);}
+			foreach($r as $d){$v_data['v_lang']=str_replace($d['0'],$d['1'],$v_data['v_lang']);}
+		}
+		
+		
+		if(is_numeric($localId))
+		{		
+			$v_data['v_ismake'] = 0;
+			$v_data['tid'] = $localId;
+			return $this->_into_database($v_data);
+		}else 
+		{
+			echo "数据<font color=red>".$v_data['v_name']."</font>未绑定分类，跳过采集<br>";
+		}
+	}
+
 }

@@ -555,14 +555,47 @@ if($action=="list")
 	{
 		$weburl=$var_url.(strpos($var_url,'?')!==false?"&":"?")."h=".$h."&wd=".gbutf8($wd)."&t=".$t."&ac=list&bindtype=".getBindedLibIds()."&pg=".$pg;
 	}
-	$xml = simplexml_load_string(xmlSafeStr(str_replace("m_id","e_id[]",str_replace("?action=","?ressite=".$ressite."&action=",cget($weburl,$isref)))),null,LIBXML_NOCDATA|LIBXML_NOENT);
 	
-	if(!$xml){	$xml = simplexml_load_string(xmlSafeStr(str_replace("m_id","e_id[]",str_replace("?action=","?ressite=".$ressite."&action=",cget($weburl,0)))),null,LIBXML_NOCDATA|LIBXML_NOENT);}
-	if(!$xml){ echo '获取资源失败';exit;}
-	$totalcount = $xml->list['recordcount'];
-	$pagesize = $xml->list['pagesize'];	
-	$currentpage = $xml->list['page'];
-	$pagecount = $xml->list['pagecount'];
+	// 自动检测数据格式
+	$content = cget($weburl,$isref);
+	$is_json = false;
+	$json_data = null;
+	$xml = null;
+	
+	// 尝试解析为 JSON
+	$json_data = json_decode($content, true);
+	if (json_last_error() === JSON_ERROR_NONE && isset($json_data['code'])) {
+		$is_json = true;
+	} else {
+		// JSON 解析失败，尝试 XML
+		$xml = simplexml_load_string(xmlSafeStr(str_replace("m_id","e_id[]",str_replace("?action=","?ressite=".$ressite."&action=",$content))),null,LIBXML_NOCDATA|LIBXML_NOENT);
+		if(!$xml){
+			$content = cget($weburl,0);
+			$xml = simplexml_load_string(xmlSafeStr(str_replace("m_id","e_id[]",str_replace("?action=","?ressite=".$ressite."&action=",$content))),null,LIBXML_NOCDATA|LIBXML_NOENT);
+		}
+		if(!$xml){ 
+			echo '获取资源失败';
+			exit;
+		}
+	}
+	
+	// 获取分页信息
+	$totalcount = 0;
+	$pagesize = 0;
+	$currentpage = 0;
+	$pagecount = 0;
+	
+	if ($is_json) {
+		$totalcount = isset($json_data['total']) ? $json_data['total'] : 0;
+		$pagesize = isset($json_data['limit']) ? $json_data['limit'] : 20;
+		$currentpage = isset($json_data['page']) ? $json_data['page'] : 1;
+		$pagecount = isset($json_data['pagecount']) ? $json_data['pagecount'] : 1;
+	} else {
+		$totalcount = $xml->list['recordcount'];
+		$pagesize = $xml->list['pagesize'];
+		$currentpage = $xml->list['page'];
+		$pagecount = $xml->list['pagecount'];
+	}
 	?>
     
     
@@ -580,6 +613,34 @@ if($action=="list")
           
           <?php 
           	
+			// 根据数据格式显示分类
+			if ($is_json && isset($json_data['class']) && is_array($json_data['class'])) {
+				foreach($json_data['class'] as $ty)
+				{
+					$type_id = isset($ty['type_id']) ? $ty['type_id'] : 0;
+					$type_name = isset($ty['type_name']) ? $ty['type_name'] : '';
+					$isbangding = "";
+					if(getBindedLocalId($rid."_".$type_id))
+					{
+						if(intval(getBindedLocalId($rid."_".$type_id)))
+						{
+							$isbangding = "已绑定";
+						}
+						else
+						{
+							$isbangding = "<font color='red'>未绑定</font>";
+						}
+					}
+					else
+					{
+						$isbangding = "<font color='red'>未绑定</font>";
+					}
+					?>
+           <li><a href="?ac=list&amp;url=<?php  echo $var_url?>&amp;rid=<?php  echo $rid ?>&amp;t=<?php  echo $type_id?>" ><?php  echo $type_name; ?></a>&nbsp;&nbsp;<label id="bind_<?php  echo $rid ?>_<?php  echo $type_id ?>"><b><a href="#" onClick="setBindType('<?php  echo $rid ?>_<?php  echo $type_id ?>',0)"><?php  echo $isbangding ?></a></b></label></li>
+               
+               <?php 
+				}
+			} else {
 				foreach($xml->class->ty as $ty)
 				{
 					$isbangding = "";
@@ -600,9 +661,10 @@ if($action=="list")
 					}
 					?>
            <li><a href="?ac=list&amp;url=<?php  echo $var_url?>&amp;rid=<?php  echo $rid ?>&amp;t=<?php  echo $ty['id']?>" ><?php  echo $ty; ?></a>&nbsp;&nbsp;<label id="bind_<?php  echo $rid ?>_<?php  echo $ty['id'] ?>"><b><a href="#" onClick="setBindType('<?php  echo $rid ?>_<?php  echo $ty['id'] ?>',0)"><?php  echo $isbangding ?></a></b></label></li>
-                    
-                    <?php 
+               
+               <?php 
 				}
+			}
 		  
 		  ?>
         </ul>
@@ -665,18 +727,31 @@ if($action=="list")
           <input type="submit" class="btn" name="submit" value="搜 索" />
           &nbsp;
           <select name="select" onChange="location.href='?ac=list&amp;url=<?php  echo $var_url?>&rid=<?php  echo $rid;?>&t='+this.options[this.selectedIndex].value+'&h=&pg=&wd='">
-            <option value="">按分类查看</option>
-            <?php 
+           <option value="">按分类查看</option>
+           <?php 
+			// 根据数据格式显示分类选项
+			if ($is_json && isset($json_data['class']) && is_array($json_data['class'])) {
+				foreach($json_data['class'] as $ty)
+				{
+					$type_id = isset($ty['type_id']) ? $ty['type_id'] : 0;
+					$type_name = isset($ty['type_name']) ? $ty['type_name'] : '';
+          			?>
+                     <option value="<?php  echo $type_id?>"><?php  echo $type_name;?></option>
+               
+               <?php 
+				}
+			} else {
 				foreach($xml->class->ty as $ty)
 				{
 
           			?>
                      <option value="<?php  echo $ty['id']?>"><?php  echo $ty;?></option>
-                    
-                    <?php 
+               
+               <?php 
 				}
-				
-			?>
+			}
+			
+		  ?>
             
            
           </select>
@@ -703,21 +778,53 @@ if($action=="list")
  
     <?php 
 	
-	foreach($xml->list->video as $video)
-	{
-		//echo gbutf8($video->id)."<br/>";
-		$starttime = mktime(0,0,0,date('m'),date('d'),date('Y'));
-		$vtime = strtotime($video->last);
-		if($vtime>=$starttime&&$vtime<=$starttime+78400)
-		{ 
-			$ch = 'checked';
-			$video->last='<font color="red">'.$video->last.'</font>';
-		}
-		else
+	// 根据数据格式显示视频列表
+	if ($is_json && isset($json_data['list']) && is_array($json_data['list'])) {
+		foreach($json_data['list'] as $video)
 		{
-			$ch = '';	
+			$vod_id = isset($video['vod_id']) ? $video['vod_id'] : 0;
+			$vod_name = isset($video['vod_name']) ? $video['vod_name'] : '';
+			$vod_remarks = isset($video['vod_remarks']) ? $video['vod_remarks'] : '';
+			$type_id = isset($video['type_id']) ? $video['type_id'] : 0;
+			$type_name = isset($video['type_name']) ? $video['type_name'] : '';
+			$vod_time = isset($video['vod_time']) ? $video['vod_time'] : '';
+			
+			$starttime = mktime(0,0,0,date('m'),date('d'),date('Y'));
+			$vtime = strtotime($vod_time);
+			$ch = '';
+			$display_time = $vod_time;
+			
+			if($vtime>=$starttime&&$vtime<=$starttime+78400)
+			{ 
+				$ch = 'checked';
+				$display_time='<font color="red">'.$vod_time.'</font>';
+			}
+			?>
+        	<tr>
+		<td nowrap="nowrap"><input type="checkbox" class="checkbox" name="ids[]" value="<?php  echo $vod_id; ?>" id="<?php  echo $vod_id; ?>" <?php  echo $ch; ?>/><label for="<?php  echo $vod_id; ?>"><?php  echo $vod_name; ?><font color="#FF0000"><?php  echo $vod_remarks; ?></font></label></td>
+		<td nowrap="nowrap"><a href="?ac=list&t=<?php  echo $type_id; ?>&rid=<?php  echo $rid;?>"><?php  echo $type_name; ?></a></td>
+		<td nowrap="nowrap"></td>
+		<td nowrap="nowrap"><?php  echo $display_time; ?></td>
+	</tr>
+
+        <?php 
 		}
-		?>
+	} else {
+		foreach($xml->list->video as $video)
+		{
+			//echo gbutf8($video->id)."<br/>";
+			$starttime = mktime(0,0,0,date('m'),date('d'),date('Y'));
+			$vtime = strtotime($video->last);
+			if($vtime>=$starttime&&$vtime<=$starttime+78400)
+			{ 
+				$ch = 'checked';
+				$video->last='<font color="red">'.$video->last.'</font>';
+			}
+			else
+			{
+				$ch = '';	
+			}
+			?>
         	<tr>
 		<td nowrap="nowrap"><input type="checkbox" class="checkbox" name="ids[]" value="<?php  echo $video->id; ?>" id="<?php  echo $video->id; ?>" <?php  echo $ch; ?>/><label for="<?php  echo $video->id; ?>"><?php  echo $video->name; ?><font color="#FF0000"><?php  echo $video->note; ?></font></label></td>
 		<td nowrap="nowrap"><a href="?ac=list&t=<?php  echo $video->tid; ?>&rid=<?php  echo $rid;?>"><?php  echo $video->type; ?></a></td>
@@ -726,6 +833,7 @@ if($action=="list")
 	</tr>
 
         <?php 
+		}
 	}
 	?>
 	</form>
@@ -943,10 +1051,24 @@ function intoDatabase($url,$gtype)
 	global $dsql,$col,$cfg_gatherset,$backurl,$gatherWaitTime,$ressite,$var_url,$action,$isref,$pg;
 	$content=cget($url,$isref);
 	$content=filterChar($content);
-	$xml = simplexml_load_string(xmlSafeStr($content), 'SimpleXMLElement',LIBXML_NOCDATA|LIBXML_NOENT); 
-	if(!$xml){	$xml =  simplexml_load_string(xmlSafeStr(cget($url,0), 'SimpleXMLElement',LIBXML_NOCDATA|LIBXML_NOENT)); }
-	if(!$xml){ echo '获取资源失败';exit;}
-	echo "<div style='font-size:13px'><font color=red>资源库视频采集开始：</font><br>";
+	
+	// 自动检测数据格式
+	$is_json = false;
+	$json_data = null;
+	$xml = null;
+	
+	// 尝试解析为 JSON
+	$json_data = json_decode($content, true);
+	if (json_last_error() === JSON_ERROR_NONE && isset($json_data['code'])) {
+		$is_json = true;
+	} else {
+		// JSON 解析失败，尝试 XML
+		$xml = simplexml_load_string(xmlSafeStr($content), 'SimpleXMLElement',LIBXML_NOCDATA|LIBXML_NOENT); 
+		if(!$xml){	$xml =  simplexml_load_string(xmlSafeStr(cget($url,0), 'SimpleXMLElement',LIBXML_NOCDATA|LIBXML_NOENT)); }
+		if(!$xml){ echo '获取资源失败';exit;}
+	}
+	
+	echo "<div style='font-size:13px'><font color='red'>资源库视频采集开始：</font><br>";
 	if ($gtype=="type" || $gtype=="day"|| $gtype=="week"|| $gtype=="all") 
 	{
 		if(empty($pg))
@@ -954,24 +1076,57 @@ function intoDatabase($url,$gtype)
 		else
 			$page=$pg;
 	}
-	$temparr=array();
-	$temparr=getrulevaluearr($content,'v');
-	$pagecount = $xml->list['pagecount'];
-	$pagesize = $xml->list['pagesize'];
-	$recordcount = $xml->list['recordcount'];
-	foreach($xml->list->video as $video)
-	{
-		$xmltid =  $video->tid;//影片分类id
-		$name =  $video->name;//影片名称
-		$localId = getBindedLocalId($ressite.'_'.$xmltid);//入库后本地id
-		$data = "$$".$video->dl->dd;
-		if(!empty($name)&&!empty($data))
+	
+	$pagecount = 0;
+	$pagesize = 0;
+	$recordcount = 0;
+	
+	if ($is_json) {
+		// 处理 JSON 格式数据
+		$pagecount = isset($json_data['pagecount']) ? $json_data['pagecount'] : 1;
+		$pagesize = isset($json_data['limit']) ? $json_data['limit'] : 20;
+		$recordcount = isset($json_data['total']) ? $json_data['total'] : 0;
+	} else {
+		// 处理 XML 格式数据
+		$temparr=array();
+		$temparr=getrulevaluearr($content,'v');
+		$pagecount = $xml->list['pagecount'];
+		$pagesize = $xml->list['pagesize'];
+		$recordcount = $xml->list['recordcount'];
+	}
+	if ($is_json) {
+		// 处理 JSON 格式数据
+		if (isset($json_data['list']) && is_array($json_data['list'])) {
+			foreach($json_data['list'] as $video)
+			{
+				$xmltid = isset($video['type_id']) ? $video['type_id'] : 0; // 影片分类id
+				$name = isset($video['vod_name']) ? $video['vod_name'] : ''; // 影片名称
+				$localId = getBindedLocalId($ressite.'_'.$xmltid); // 入库后本地id
+				
+				if(!empty($name))
+				{
+					echo $col->json_db($video,$localId);
+				}//if $title
+				@ob_flush();
+				@flush();
+			}//foreach
+		}
+	} else {
+		// 处理 XML 格式数据
+		foreach($xml->list->video as $video)
 		{
-			echo $col->xml_db($video,$localId);
-		}//if $title
-		@ob_flush();
-		@flush();
-	}//foreach
+			$xmltid =  $video->tid;//影片分类id
+			$name =  $video->name;//影片名称
+			$localId = getBindedLocalId($ressite.'_'.$xmltid);//入库后本地id
+			$data = "$$".$video->dl->dd;
+			if(!empty($name)&&!empty($data))
+			{
+				echo $col->xml_db($video,$localId);
+			}//if $title
+			@ob_flush();
+			@flush();
+		}//foreach
+	}
 	if ($action=="select") exit("<script>alert('恭喜，全部搞定');location.href='".urldecode($backurl)."';</script>");
 	if($page==$pagecount OR $pagecount==0)
 	{

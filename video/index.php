@@ -155,9 +155,13 @@ function echoPlay($vId)
 		}
 	}
 	
+	//获取评论数
+	$PLnumSQL=$dsql->getOne("select count(id) as dd from sea_comment where v_id=".$vId);
+	$vPLnum=$PLnumSQL['dd'];
 
-	
-	
+	//获取收藏数
+	$SCnumSQL=$dsql->getOne("select count(id) as dd from sea_favorite where vid=".$vId);
+	$vSCnum=$SCnumSQL['dd'];
 	
 	$typeText = getTypeText($vType);
 	$contentLink = getContentLink($vType,$vId,"",date('Y-n',$row['v_addtime']),$row['v_enname']);
@@ -182,6 +186,8 @@ function echoPlay($vId)
 	$content=str_replace("{playpage:name}",$row['v_name'],$content);
 	$content=str_replace("{playpage:url}",$GLOBALS['cfg_basehost'].$contentLink2,$content);
 	$content=str_replace("{playpage:link}",$contentLink,$content);
+	$content=str_replace("{playpage:plnum}",$vPLnum,$content);
+	$content=str_replace("{playpage:scnum}",$vSCnum,$content);
 	
 	
 	//如果开启播放来源排序，获取第一排序的播放组地址
@@ -322,11 +328,49 @@ function echoPlay($vId)
 	$content = $mainClassObj->paresNextVideo($content,$vId,$typeFlag,$vType);
 	$partName=getPartName2($row['v_playdata'],$id,$from);
 	$partNameN=getPartName2($row['v_playdata'],$id,$from+1);
+	$partNameP=getPartName2($row['v_playdata'],$id,$from-1);
 	$content = str_replace("{playpage:from}",$partName[0],$content);
 	$content = str_replace("{playpage:part}",$partName[1],$content);
+	$content = str_replace("{playpage:predz}",$partNameP[2],$content);
 	$content = str_replace("{playpage:dz}",$partName[2],$content);
+	$content = str_replace("{playpage:nextdz}",$partNameN[2],$content);
 	$content = str_replace("{playpage:ename}",$partName[3],$content);
 
+	$linkArr=getLinkArr($row['v_playdata'],0);
+
+	// 获取$linkArr里所有集数 生成数组
+	$episodeList = array();
+	foreach ($linkArr as $key => $item) {
+		// 跳过空项
+		if (empty(trim($item))) {
+			continue;
+		}
+		
+		// 格式：集数名称$视频地址$其他信息
+		$episodeParts = explode('$', $item);
+		
+		$episodeInfo = array(
+			'index' => $key,
+			'name' => isset($episodeParts[0]) ? $episodeParts[0] : '',
+			'url' => isset($episodeParts[1]) ? $episodeParts[1] : '',
+			'extra' => isset($episodeParts[2]) ? $episodeParts[2] : ''
+		);
+		
+		$episodeList[] = $episodeInfo;
+	}
+	
+	// 输出调试（可选）
+	//print_r($episodeList['url']); 
+	foreach($episodeList as $key=>$item)
+	{
+		$eurls.=$item['url'].",";
+	}
+	$eurls=trim($eurls,",");
+	$content = str_replace("{playpage:alldz}",$eurls,$content);
+	//print_r($eurls); 
+	// die;
+
+	
 //隐藏的播放地址start
 $str=$row['v_playdata'];
 $arr1=array();

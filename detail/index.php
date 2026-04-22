@@ -171,7 +171,19 @@ function echoContent($vId)
 	}else{
 	$content=str_replace("{playpage:gpic}",'/'.$GLOBALS['cfg_cmspath'].'pic/nopic.gif',$content);
 	}
-	
+
+	//获取评论数
+	$PLnumSQL=$dsql->getOne("select count(id) as dd from sea_comment where v_id=".$vId);
+	$vPLnum=$PLnumSQL['dd'];
+
+	//获取收藏数
+	$SCnumSQL=$dsql->getOne("select count(id) as dd from sea_favorite where vid=".$vId);
+	$vSCnum=$SCnumSQL['dd'];
+
+
+	$content = str_replace("{playpage:plnum}",$vPLnum,$content);
+	$content = str_replace("{playpage:scnum}",$vSCnum,$content);
+
 	$v_actor=$row['v_actor'];
 	$v_tags=$row['v_tags'];
 	$v_des=$row['v_content'];

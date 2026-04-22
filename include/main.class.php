@@ -1330,6 +1330,28 @@ class MainClass_Template {
 					case "random" :
 						$orderStr = " order by rand() desc";
 						break;
+					case "pl" :
+						$orderStr = "";
+						$PLnumSQL="SELECT v_id, COUNT(v_id) AS count FROM sea_comment GROUP BY v_id ORDER BY count DESC LIMIT $vnum";
+						$this->dsql->SetQuery ( $PLnumSQL );
+						$this->dsql->Execute ( 'al' );
+						while ( $rowr = $this->dsql->GetObject ( 'al' ) ) {
+							$rows [] = $rowr->v_id;
+							}
+						$plid = implode (",", $rows);
+						$wherePLid = " and  m.v_id in ($plid) order by FIELD(v_id,$plid)";
+						break;
+					case "sc" :
+						$orderStr = "";
+						$SCnumSQL="SELECT vid, COUNT(vid) AS count FROM sea_favorite GROUP BY vid ORDER BY count DESC LIMIT $vnum";
+						$this->dsql->SetQuery ( $SCnumSQL );
+						$this->dsql->Execute ( 'al' );
+						while ( $rowr = $this->dsql->GetObject ( 'al' ) ) {
+							$rows [] = $rowr->vid;
+							}
+						$scid = implode (",", $rows);
+						$whereSCid = " and  m.v_id in ($scid) order by FIELD(v_id,$scid)";
+						break;
 				}
 				$vtypeStr = "";
 				$extrasql = "";
@@ -1510,11 +1532,12 @@ class MainClass_Template {
 				
 				// 按指定id
 				if (! empty ( $vsid )) {
-					
 					$whereSid = " and  m.v_id in ($vsid)";
 				} else {
 					$whereSid = "";
 				}
+
+				
 				
 				switch (trim ( $vtime )) {
 					case "day" :
@@ -1535,11 +1558,11 @@ class MainClass_Template {
 					default :
 						$whereTime = "";
 				}
-				$whereStr = str_replace ( "where  and ", "where ", " where m.v_recycled=0" . $whereType . $whereLetter . $whereLang . $whereArea . $whereYear . $whereTopic . $whereTime . $whereState . $whereCommend . $whereJq . $whereReweek . $whereTvs . $whereCompany . $whereRel . $whereSid . $whereNtag . $whereVer . $whereDirector . $whereActor );
+				$whereStr = str_replace ( "where  and ", "where ", " where m.v_recycled=0" . $whereType . $whereLetter . $whereLang . $whereArea . $whereYear . $whereTopic . $whereTime . $whereState . $whereCommend . $whereJq . $whereReweek . $whereTvs . $whereCompany . $whereRel . $whereSid .  $wherePLid . $whereSCid . $whereNtag . $whereVer . $whereDirector . $whereActor );
 				if (trim ( $whereStr ) == "where")
 					$whereStr = "";
 				$sql = "select m.*," . $field_des . "," . $field_playdata . " from sea_data m " . $left_des . $left_playdata . $whereStr . $orderStr . " LIMIT $vstart,$vnum";
-				//echo $sql.'<br>';
+				//echo $sql.'<br>';die;
 				if ($cfg_issqlcache || $cfg_runmode == '0') {
 					$mycachefile = md5 ( 'videolist' . $whereStr . $orderStr . $vstart . $vnum );
 					setCache ( $mycachefile, $sql );
@@ -1818,6 +1841,16 @@ class MainClass_Template {
 								break;
 							case "nolinkjqtype" :
 								$loopstrVlistNew = str_replace ( $matchfieldvalue, $row->v_jq, $loopstrVlistNew );
+								break;
+							case "plnum" :
+								$PLnumSQL=$this->dsql->getOne("select count(id) as dd from sea_comment where v_id=".$row->v_id);
+								$vPLnum=$PLnumSQL['dd'];
+								$loopstrVlistNew = str_replace ( $matchfieldvalue, $vPLnum, $loopstrVlistNew );
+								break;
+							case "scnum" :
+								$SCnumSQL=$this->dsql->getOne("select count(id) as dd from sea_favorite where vid=".$row->v_id);
+								$vSCnum=$SCnumSQL['dd'];
+								$loopstrVlistNew = str_replace ( $matchfieldvalue, $vSCnum, $loopstrVlistNew );
 								break;
 						}
 					}
@@ -2361,6 +2394,11 @@ class MainClass_Template {
 							case "nolinkjqtype" :
 								$loopstrChannelNew = str_replace ( $matchfieldvalue, $row->v_jq, $loopstrChannelNew );
 								break;
+							case "plnum" :
+								$PLnumSQL=$this->dsql->getOne("select count(id) as dd from sea_comment where v_id=".$row->v_id);
+								$vPLnum=$PLnumSQL['dd'];
+								$loopstrChannelNew = str_replace ( $matchfieldvalue, $vPLnum, $loopstrChannelNew );
+								break;
 						}
 					}
 					$i = $i + 1;
@@ -2474,7 +2512,6 @@ class MainClass_Template {
 					$this->dsql->SetQuery ( $sql );
 					$this->dsql->Execute ( 'al' );
 					$rowr = $this->dsql->GetObject ( 'al' );
-					//print_r($rowr->news);die();
 					$zpagevid = str_replace ( "ttttt", ",", $rowr->news );
 					$whereStr = " where n_recycled=0 and n_id in ($zpagevid)";
 				

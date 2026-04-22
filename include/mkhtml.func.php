@@ -505,6 +505,17 @@ function makeContentById($vId)
 			$connector = "</a>";
 			$content=str_replace("{playpage:linktypename}","<a href=\"".getChannelPagesLink($vType)."\">".getTypeName($vType).$connector.getExtraTypeName($vExtraType,$connector).$connector,$content);	
 		}
+		//获取评论数
+		$PLnumSQL=$dsql->getOne("select count(id) as dd from sea_comment where v_id=".$vId);
+		$vPLnum=$PLnumSQL['dd'];
+		
+		//获取收藏数
+		$SCnumSQL=$dsql->getOne("select count(id) as dd from sea_favorite where vid=".$vId);
+		$vSCnum=$SCnumSQL['dd'];
+					
+		$content = str_replace("{playpage:plnum}",$vPLnum,$content);
+		$content = str_replace("{playpage:scnum}",$vSCnum,$content);	
+
 		$content=str_replace("{playpage:typelink}",getChannelPagesLink($vType),$content);
 		$content=str_replace("{playpage:lang}",$row['v_lang'],$content);
 		$content=str_replace("{playpage:encodename}",urlencode($row['v_name']),$content);
@@ -672,7 +683,7 @@ return $PartName;
 }
 function makePlayByData($vType,$vId,$playArr,$str2,$content,$sdate,$enname,$stringecho)
 {
-	global $cfg_playaddr_enc,$mainClassObj;
+	global $cfg_playaddr_enc,$mainClassObj,$dsql;
 	if($GLOBALS['cfg_ismakeplay']==1){
 		for($i=0;$i<$playArr[0];$i++)
 		{
@@ -687,13 +698,26 @@ function makePlayByData($vType,$vId,$playArr,$str2,$content,$sdate,$enname,$stri
 				$tmp1=str_replace("<head>",'<head><script>var seatype="play"; var seaid='.$vId.';var seaplaylink="'.$playLink.'";</script><script src="/'.$GLOBALS['cfg_cmspath'].'js/seajump.js"></script>',$tmp1);
 				$partName=getPartName($str2,$i,$n);
 				$partNameN=getPartName($str2,$i,$n+1);
+				$partNameP=getPartName($str2,$i,$n-1);
 				$nextplaylink = getPlayLink2($vType,$vId,date('Y-n',$sdate),$enname,$i,$n+1>=$z?$n:$n+1);
 				$preplaylink  = getPlayLink2($vType,$vId,date('Y-n',$sdate),$enname,$i,$n-1<=0?0:$n-1);
 				$tmp1=str_replace("{playpage:nextplaylink}",$nextplaylink,$tmp1);
 				$tmp1=str_replace("{playpage:preplaylink}",$preplaylink,$tmp1);
 				$tmp1 = str_replace("{playpage:ename}",$partName[3],$tmp1);
 				$tmp1 = str_replace("{playpage:part}",$partName[1],$tmp1);
+				$tmp1 = str_replace("{playpage:predz}",$partNameP[2],$tmp1);
 				$tmp1 = str_replace("{playpage:dz}",$partName[2],$tmp1);
+				$st3=explode("$$$",$str2);
+				$st4=explode("$$",$st3[0]);
+				$st5=explode("#",$st4[1]);
+				foreach($st5 as $key=>$item)
+				{
+					$st6=explode("$",$item); 
+					$eurls.=$st6[1].",";
+				}
+				$eurls=trim($eurls,",");
+				$tmp1 = str_replace("{playpage:alldz}",$eurls,$tmp1);
+				$tmp1 = str_replace("{playpage:nextdz}",$partNameN[2],$tmp1);			
 				$body= "<script>document.getElementById(\"".$i.$n."\").classList.add(\"playon\");</script>\n\r</body>";
 				$tmp1 = str_replace("</body>",$body,$tmp1);
 				if($cfg_playaddr_enc=='escape'){

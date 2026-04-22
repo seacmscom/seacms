@@ -379,6 +379,54 @@ function page(t,g,p,c){
 	});
 	return false;
 }
+// Time format conversion function
+function formatTime(timeStr) {
+	var now = new Date();
+	var time;
+	
+	// Check if it's a timestamp or a date string
+	if (typeof timeStr === 'string' && timeStr.indexOf('/') > -1) {
+		// Convert date string like "2023/12/25 10:30:45" to date object
+		timeStr = timeStr.replace(/\//g, '-');
+		time = new Date(timeStr);
+	} else {
+		// It's a timestamp
+		time = new Date(parseInt(timeStr) * 1000);
+	}
+	
+	var diff = now - time;
+	var minutes = Math.floor(diff / 60000);
+	var hours = Math.floor(diff / 3600000);
+	var days = Math.floor(diff / 86400000);
+	
+	if (minutes < 1) {
+		return '刚刚';
+	}
+	else if (minutes < 60) {
+		return minutes + '分钟前';
+	} else if (hours < 24) {
+		return hours + '小时前';
+	} else if (days === 1) {
+		// Yesterday
+		var hours = time.getHours();
+		var minutes = time.getMinutes();
+		return '昨天 ' + (hours < 10 ? '0' + hours : hours) + ':' + (minutes < 10 ? '0' + minutes : minutes);
+	} else if (days < 3) {
+		// 2-3 days ago
+		var hours = time.getHours();
+		var minutes = time.getMinutes();
+		return days + '天前 ' + (hours < 10 ? '0' + hours : hours) + ':' + (minutes < 10 ? '0' + minutes : minutes);
+	} else {
+		// More than 3 days, keep original format but replace / with - and remove seconds
+		var year = time.getFullYear();
+		var month = time.getMonth() + 1;
+		var day = time.getDate();
+		var hours = time.getHours();
+		var minutes = time.getMinutes();
+		return year + '-' + (month < 10 ? '0' + month : month) + '-' + (day < 10 ? '0' + day : day) + ' ' + (hours < 10 ? '0' + hours : hours) + ':' + (minutes < 10 ? '0' + minutes : minutes);
+	}
+}
+
 //view
 function show(data){
 	var mobj=data.mlist,mol=data.mlist.length,robj=data.rlist,pobj=data.page;
@@ -393,26 +441,25 @@ function show(data){
 		htmlstr.push("<div class=\"row\"><div id=\"aface\" ><img src=\"/"+tmp1.upic+"\"></div>");
 		htmlstr.push("<h3><span>" + uname + "</span>");
 		if(tmp1.star)htmlstr.push("<span class=\"star\">"+star(tmp1.star)+"</span>");
-		htmlstr.push("<label>"+tmp1.time+"</label></h3>");
+		htmlstr.push("<label>"+formatTime(tmp1.time)+"</label></h3>");
 		htmlstr.push("<div class=\"con\">");
 		//reply_S
 		if(tmp1.reply){
 			tmp2 = tmp1.reply.split(",");
-			for(var x=0;x<tmp2.length;x++){if(robj[tmp2[x]]){htmlstr.push("<div class=\"reply\">");}}
-			for(var y=0,j=tmp2.length-1;y<tmp2.length;y++,j--){
-				tmp3 = robj[tmp2[j]];
+			if(tmp2.length > 1){
+				// Show first reply (last in array)
+				tmp3 = robj[tmp2[0]];
 				if(tmp3){
-					htmlstr.push("<h4><span>");
+					htmlstr.push("<div class=\"reply\">");
+					htmlstr.push("<span class=\"at\">@");
 					htmlstr.push(tmp3.anony ? (tmp3.from || "匿名")+"网友" : tmp3.tmp || tmp3.nick || (tmp3.from || "匿名")+"网友");
-					htmlstr.push("</span><label>"+(y)+"</label></h4>");
-					htmlstr.push("<p>");
-					if(tmp3.pic && parseInt(tmp3.check))htmlstr.push("<img src=\"upload/"+tmp3.pic+"\" /><br/>");
-					else if(tmp3.pic)htmlstr.push("<span style=\"color:#f00\">[图片审核中]</span><br/>");
-					htmlstr.push(tmp3.content.replace(/\[em:(\d+):\]/gi,"<img src=\"images/cmt/$1.gif\" />").replace(/[\r\n]{1,2}/gi,"<br />"));
-					htmlstr.push("</p></div>");
+					htmlstr.push("</span>");	
+					htmlstr.push("</div>");
 				}
-			}
-			if(tmp2.length>=20)allowreply=false;
+				
+
+			} 
+			if(tmp2.length>=200)allowreply=false;
 		}
 		//reply_E
 		htmlstr.push("<div class=\"mycon\">");
@@ -506,7 +553,7 @@ function reply(cmid,cmcon){
 	$("#cparent").val(cmid);
 	$("#editor").show();
 	$("#cancel").show();
-	document.getElementById('talkwhat').scrollIntoView();
+	document.getElementById('talkwhat').scrollIntoView({ block: "end" });
 	$("#cancel").html("回复："+cmcon+"&nbsp;&nbsp;<a href=\"#\" onclick=\"$('#cancel').html('');$('#cparent').val(0);$('#cancel').hide();return false;\">取消</a>");
 }
 function clk(o,i,n,t){
@@ -534,7 +581,7 @@ function submitform(){
 		if(!captchastr){alert("验证码不能为空！");return false;}
 	}
 	if(!str){alert("评论内容不能为空！");return false;}
-	if(str.length > 255){alert("评论内容不能超过255个字符！");return false;}
+	if(str.length > 300){alert("评论内容不能超过300字！");return false;}
 	if(!reg.test(str)){alert("评论内容请包含中文！");return false;}
 	else $("#captcha").val($("#gcaptcha").val());
 	submit_2(user.upfile || "");
@@ -549,7 +596,6 @@ function submit_2(path){
 	$("#form2").el.submit();
 }
 function success(url){
-	alert("评论成功！");
 	if(parseInt(param.allowup) === 1)viewform1();
 	$("#ppath").val("");
 	$("#cancel").hide();
